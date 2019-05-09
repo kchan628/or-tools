@@ -84,6 +84,7 @@ include $(OR_ROOT)makefiles/Makefile.cpp.mk
 include $(OR_ROOT)makefiles/Makefile.python.mk
 include $(OR_ROOT)makefiles/Makefile.java.mk
 include $(OR_ROOT)makefiles/Makefile.dotnet.mk
+include $(OR_ROOT)makefiles/Makefile.go.mk
 include $(OR_ROOT)makefiles/Makefile.archive.mk
 
 # Finally include user makefile if it exists
