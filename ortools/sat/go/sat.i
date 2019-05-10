@@ -26,7 +26,7 @@ typedef uint64_t uint64;
 
 %go_import("github.com/golang/protobuf/proto")
 
-%module(directors="1") operations_research_sat
+%module(directors="1") sat_wrapper
 
 %define PROTO_INPUT(CppProtoType, GoProtoType, param_name)
 %typemap(gotype) PROTO_TYPE* INPUT, PROTO_TYPE& INPUT "GoProtoType"

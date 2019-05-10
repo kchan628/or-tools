@@ -21,7 +21,7 @@ option csharp_namespace = "Google.OrTools.Sat";
 option java_package = "com.google.ortools.sat";
 option java_multiple_files = true;
 option java_outer_classname = "CpModelProtobuf";
-option go_package = "github.com/google/or-tools-go/sat";
+option go_package = "go/sat/gen";
 
 // An integer variable.
 //

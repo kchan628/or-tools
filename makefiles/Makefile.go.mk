@@ -12,7 +12,6 @@ endif
 
 GO_BIN = $(shell $(WHICH) go)
 GO_PATH = $(shell [ -z "${GOPATH}" ] || echo $(GOPATH))
-PROTOC_GEN_GO = $(shell test -f $(GOPATH)/bin/protoc-gen-go && echo $(GOPATH)/bin/protoc-gen-go)
 GO_OR_TOOLS_NATIVE_LIBS := $(LIB_DIR)/$(LIB_PREFIX)goortools.$(SWIG_GO_LIB_EXT)
 
 HAS_GO = true
@@ -20,9 +19,6 @@ ifndef GO_BIN
 HAS_GO =
 endif
 ifndef GO_PATH
-HAS_GO =
-endif
-ifndef PROTOC_GEN_GO
 HAS_GO =
 endif
 
@@ -40,32 +36,33 @@ test_go: test_go_pimpl
 BUILT_LANGUAGES +=, Golang
 endif
 
-$(GO_PATH)/src/github.com/google/or-tools-go/sat:
-	-$(MKDIR_P) $(GO_PATH)$Ssrc$Sgithub.com$Sgoogle$Sor-tools-go$Ssat
+go/sat/gen:
+	-$(MKDIR_P) go$Ssat$Sgen
 
-$(GO_PATH)/src/github.com/google/or-tools-go/sat/cp_model.pb.go: \
+go/sat/gen/cp_model.pb.go: \
  $(SRC_DIR)/ortools/sat/cp_model.proto \
- | $(GO_PATH)/src/github.com/google/or-tools-go/sat
-	$(PROTOC) --proto_path=$(SRC_DIR) --go_out=$(GO_PATH)$Ssrc $(SRC_DIR)$Sortools$Ssat$Scp_model.proto
+ | go/sat/gen
+	test -f $(GO_PATH)/bin/protoc-gen-go && echo $(GO_PATH)/bin/protoc-gen-go || go get -u github.com/golang/protobuf/protoc-gen-go
+	$(PROTOC) --proto_path=$(SRC_DIR) --go_out=. $(SRC_DIR)$Sortools$Ssat$Scp_model.proto
 
-$(GO_PATH)/src/github.com/google/or-tools-go/sat/sat_parameters.pb.go: \
+go/sat/gen/sat_parameters.pb.go: \
  $(SRC_DIR)/ortools/sat/sat_parameters.proto \
- | $(GO_PATH)/src/github.com/google/or-tools-go/sat
-	$(PROTOC) --proto_path=$(SRC_DIR) --go_out=$(GO_PATH)$Ssrc $(SRC_DIR)$Sortools$Ssat$Ssat_parameters.proto
+ | go/sat/gen
+	test -f $(GO_PATH)/bin/protoc-gen-go && echo $(GO_PATH)/bin/protoc-gen-go || go get -u github.com/golang/protobuf/protoc-gen-go
+	$(PROTOC) --proto_path=$(SRC_DIR) --go_out=. $(SRC_DIR)$Sortools$Ssat$Ssat_parameters.proto
 
 $(GEN_DIR)/ortools/sat/sat_go_wrap.cc: \
  $(SRC_DIR)/ortools/sat/go/sat.i \
  $(SRC_DIR)/ortools/base/base.i \
  $(SAT_DEPS) \
- | $(GEN_DIR)/ortools/sat $(GO_PATH)/src/github.com/google/or-tools-go/sat
+ | $(GEN_DIR)/ortools/sat
 	$(SWIG_BINARY) $(SWIG_INC) -I$(INC_DIR) -c++ -go -cgo \
  -o $(GEN_PATH)$Sortools$Ssat$Ssat_go_wrap.cc \
- -package github.com/google/or-tools-go/sat \
- -module sat \
- -outdir $(GO_PATH)$Ssrc$Sgithub.com$Sgoogle$Sor-tools-go$Ssat \
+ -package go/sat/gen \
+ -module sat_wrapper \
+ -outdir go$Ssat$Sgen \
  -intgosize 64 \
  -v \
- -soname $(LIB_PREFIX)goortools.$(SWIG_GO_LIB_EXT) \
  $(SRC_DIR)$Sortools$Ssat$Sgo$Ssat.i
 
 $(OBJ_DIR)/swig/sat_go_wrap.$O: \
@@ -85,24 +82,29 @@ $(GO_OR_TOOLS_NATIVE_LIBS): \
  $(OR_TOOLS_LDFLAGS)
 
 go_pimpl: \
-	$(GO_PATH)/src/github.com/google/or-tools-go/sat/cp_model.pb.go \
-	$(GO_PATH)/src/github.com/google/or-tools-go/sat/sat_parameters.pb.go \
+	go/sat/gen/cp_model.pb.go \
+	go/sat/gen/sat_parameters.pb.go \
 	$(GEN_DIR)/ortools/sat/sat_go_wrap.cc \
 	$(GO_OR_TOOLS_NATIVE_LIBS)
+	cd go/sat; \
+	CGO_LDFLAGS="-L$(OR_TOOLS_TOP)/lib -lgoortools -v" \
+	go build;
 
-test_go_pimpl:
-	@echo test_go
 
-check_go_pimpl:
-	@echo check_go
+test_go_pimpl: go_pimpl
+	cd go/sat; \
+	CGO_LDFLAGS="-L$(OR_TOOLS_TOP)/lib -lgoortools -v" \
+	DYLD_LIBRARY_PATH="$(OR_TOOLS_TOP)/dependencies/install/lib:$(OR_TOOLS_TOP)/lib:" \
+	go test;
+
+check_go_pimpl: test_go_pimpl
 
 ################
 ##  Cleaning  ##
 ################
 .PHONY: clean_go # Clean Go output from previous build.
 clean_go:
-	-$(DEL) $(GO_PATH)$Ssrc$Sgithub.com$Sgoogle$Sor-tools-go$Ssat$Ssat.go
-	-$(DEL) $(GO_PATH)$Ssrc$Sgithub.com$Sgoogle$Sor-tools-go$Ssat$S*.pb.go
+	-$(DELREC) go$Ssat$Sgen
 	-$(DEL) $(GEN_PATH)$Sortools$Ssat$S*go_wrap*
 	-$(DEL) $(OBJ_DIR)$Sswig$S*go_wrap*
 	-$(DEL) $(LIB_DIR)$S$(LIB_PREFIX)goortools.$(SWIG_GO_LIB_EXT)
